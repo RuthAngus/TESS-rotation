@@ -337,23 +337,20 @@ def getPrfAtColRowFits(col, row, ccd, camera, sector, path):
     return interpolatedPrf
 
 
-def make_prf(col, row, ccd, camera, sector, xshift, yshift):
-    return getPrfAtColRowFits(col, row, ccd, camera, sector, path)
+def move_prf(prf, xshift, yshift, min_pix=0., max_pix=13.):
 
-
-def move_prf(prf, xshift, yshift):
-
-    x = np.linspace(0.0, 13.0, 117)
-    y = np.linspace(0.0, 13.0, 117)
+    x = np.linspace(min_pix, max_pix, 117)
+    y = np.linspace(min_pix, max_pix, 117)
     X, Y = np.meshgrid(x, y)
 
+    # Interpolate the prf onto a 13x13 pixel grid
     interp_spline = RectBivariateSpline(y, x, prf)
 
+    # Then shift the prf to the centroid of the star.
     dx2, dy2 = 0.01, 0.01
-    x2 = np.arange(0.0-xshift, 13.0-xshift, dx2)
-    y2 = np.arange(0.0-yshift, 13.0-yshift, dy2)
-    X2, Y2 = np.meshgrid(x2,y2)
+    x2 = np.arange(min_pix-xshift, max_pix-xshift, dx2)
+    y2 = np.arange(min_pix-yshift, max_pix-yshift, dy2)
+    X2, Y2 = np.meshgrid(x2, y2)
     Z2 = interp_spline(y2, x2)
-
 
     return np.sum(np.reshape(Z2, (13,100,13,100)), axis=(1,3))/100/100
