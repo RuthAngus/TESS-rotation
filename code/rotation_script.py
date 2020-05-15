@@ -44,14 +44,15 @@ def find_unique_ids(fn):
     return np.unique(id_array)
 
 
-def load_sectors(ticid):
+def load_sectors(ticid, flux_type="sap_flux"):
     path = "/Users/rangus/projects/TESSlightcurves/"
     str_ticid = str(int(ticid)).zfill(16)
     tfile = "tess?????????????-s????-{}-????-s_lc.fits".format(str_ticid)
 
     ticpath = os.path.join(path, tfile)
     fnames = sorted(glob.glob(ticpath))
-    time, flux, flux_err = lcs.tools.load_and_split_TESS(fnames)
+    time, flux, flux_err = lcs.tools.load_and_split_TESS(
+        fnames, flux_type="SAP_FLUX")
     return time, flux, flux_err
 
 
@@ -163,9 +164,9 @@ def process_light_curve(ticid):
     print("Saving light curve")
     df = pd.DataFrame(dict({"time": t, "flux": corrected_y,
                             "flux_err": yerr, "success": int(success)}))
-    df.to_csv("results/{}_lc.csv".format(ticid))
+    df.to_csv("results/{}_SAP_lc.csv".format(ticid))
 
-    return t, corrected_y, yerr
+    return t, corrected_y, yerr, success
 
 
 def measure_period(ticid, t, corrected_y, yerr):
@@ -175,7 +176,10 @@ def measure_period(ticid, t, corrected_y, yerr):
     ls_period = rotate.ls_rotation()
     acf_period = rotate.acf_rotation(interval=0.00138889, cutoff=1.5,
                                     window_length=1999)
-    period_grid = np.linspace(.5, 3*ls_period, 1000)
+
+    period_grid = np.arange(.5, 3*ls_period, 30./1000.)
+    if ls_period > 10:
+        period_grid = np.linspace(.5, 30, 1000.)
     pdm_period = rotate.pdm_rotation(period_grid)
 
     # Make the figure
@@ -186,7 +190,18 @@ def measure_period(ticid, t, corrected_y, yerr):
     plt.title("log10(Rvar) = {0:.2f}".format(rvar), fontsize=20)
     fig.savefig("plots/{}_plot".format(ticid))
 
-    return rvar, ls_period, acf_period, pdm_period, rotate.period_err
+    # Get peak heights
+    ls_peak_pos, ls_peak_height = rt.get_peak_statistics(
+        1./rotate.freq, rotate.power)
+    acf_peak_pos, acf_peak_height = rt.get_peak_statistics(
+        rotate.lags, rotate.acf)
+    pdm_peak_pos, pdm_peak_height = rt.get_peak_statistics(
+        rotate.phase, -rotate.phis)
+
+
+    return rvar, ls_period, acf_period, pdm_period[0], pdm_period[1], \
+        ls_peak_height[:3], ls_peak_pos[:3], acf_peak_height[:3], \
+        acf_peak_pos[:3], pdm_peak_height[:3], pdm_peak_pos[:3]
 
 
 if __name__ == "__main__":
@@ -198,31 +213,50 @@ if __name__ == "__main__":
 
     # df = pd.read_csv("ticids.csv")
 
+    assert os.path.exists("results.csv") == False, \
+        "WARNING: results.csv file already exists! Delete/rename this file."
+
     df = pd.read_csv("stars_with_10_or_more_sectors.csv")
     ticids = df.ticid.values
 
     clobber = False
 
-    for i in range(len(ticids)):
+    for i in range(2, 3):  # len(ticids)):
         ticid = ticids[i]
+        print(ticid, i, "of", len(ticids))
         try:
 
             # Stitch light curve.
-            if not os.path.exists("results/{}_lc.csv".format(ticid)) or clobber:
-                t, y, yerr = process_light_curve(ticid)
+            if not os.path.exists("results/{}_SAP_lc.csv"
+                                    .format(ticid)) or clobber:
+                t, y, yerr, success = process_light_curve(ticid)
 
             # Load saved version
             else:
                 print("Loading saved light curve")
                 # Load light curve
                 df = pd.read_csv("results/{}_lc.csv".format(ticid))
-                t = df.time
-                y = df.flux
-                yerr = df.flux_err
+                t = df.time.values
+                y = df.flux.values
+                yerr = df.flux_err.values
                 success = df.success.values[0]
 
+            fig = plt.figure(figsize=(16, 9))
+            ax1 = fig.add_subplot(311)
+            ax1.plot(t, y, "k.", alpha=.5)
+            ax2 = fig.add_subplot(312)
+            ax2.plot(t, y, "k.", alpha=.5)
+            ax2.set_xlim(0, 100)
+            ax3 = fig.add_subplot(313)
+            ax3.plot(t, y, "k.", alpha=.5)
+            ax3.set_xlim(0, 30)
+            plt.savefig("plots/{}_SAP_lc".format(ticid))
+            plt.close
+
             # Measure period
-            rvar, ls_period, acf_period, pdm_period, err = \
+            rvar, ls_period, acf_period, pdm_period, err, ls_peak_heights, \
+                ls_peak_pos, acf_peak_heights, acf_peak_pos, \
+                pdm_peak_heights, pdm_peak_pos = \
                 measure_period(ticid, t, y, yerr)
 
             # Save to file
@@ -232,11 +266,29 @@ if __name__ == "__main__":
                                     "pdm_period": pdm_period,
                                     "period_err": err,
                                     "Rvar": rvar,
-                                    "stitch_success": success}))
+                                    "ls_peak_height1": ls_peak_heights[0],
+                                    "ls_peak_height2": ls_peak_heights[1],
+                                    "ls_peak_height3": ls_peak_heights[2],
+                                    "ls_peak_pos1": ls_peak_pos[0],
+                                    "ls_peak_pos2": ls_peak_pos[1],
+                                    "ls_peak_pos3": ls_peak_pos[2],
+                                    "acf_peak_height1": acf_peak_heights[0],
+                                    "acf_peak_height2": acf_peak_heights[1],
+                                    "acf_peak_height3": acf_peak_heights[2],
+                                    "acf_peak_pos1": acf_peak_pos[0],
+                                    "acf_peak_pos2": acf_peak_pos[1],
+                                    "acf_peak_pos3": acf_peak_pos[2],
+                                    "pdm_peak_height1": pdm_peak_heights[0],
+                                    "pdm_peak_height2": pdm_peak_heights[1],
+                                    "pdm_peak_height3": pdm_peak_heights[2],
+                                    "pdm_peak_pos1": pdm_peak_pos[0],
+                                    "pdm_peak_pos2": pdm_peak_pos[1],
+                                    "pdm_peak_pos3": pdm_peak_pos[2],
+                                    "stitch_success": success}),
+                            index=[i])
 
-            with open("results.csv", 'a') as f:
+            with open("results_SAP.csv", 'a') as f:
                 df.to_csv(f, mode='a', header=f.tell()==0)
 
         except:
             pass
-

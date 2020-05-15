@@ -11,7 +11,6 @@ import re
 import starspot.stitch as sps
 
 
-
 def extract_ticid(fn):
     """
     Read TIC id from the file name.
