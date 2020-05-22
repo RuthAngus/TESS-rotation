@@ -1,3 +1,18 @@
+Kepler_periods.ipynb
+---------------------
+Measuring the rotation periods of Kepler stars using TESS data.
+
+
+Finding_quiet_stars.ipynb
+-------------------------
+Finding quiet stars to inject signals into.
+
+
+Pixel_viz.ipynb
+----------------
+Using the Eleanor and light kurve aperture selection tools.
+
+
 CPM_one_star.ipynb
 ------------------
 Running CPM on a southern bright M dwarf target. Also, sigma clipping and stitching it together.
