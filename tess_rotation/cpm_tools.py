@@ -13,6 +13,9 @@ import eleanor
 import tess_cpm
 import starspot as ss
 
+import pkg_resources
+st_file = pkg_resources.resource_filename(__name__, 'sector_times.csv')
+
 from tess_stars2px import tess_stars2px_function_entry
 
 def select_aperture(sector, collims, rowlims, fits_files, plot=True):
@@ -155,24 +158,23 @@ def CPM_recover(ticid, tesscut_path, any_observed_sector=1,
         xs.append(x)
         ys.append(y)
 
-    return xs, ys
+    return xs, ys, sectors
 
 
-def stitch_light_curve(time, flux, lower_sector_limit=0,
-                       upper_sector_limit=1000):
+def stitch_light_curve(ticid, sectors, time, flux):
 
+    gap_times = [time[i][0] for i in range(len(time))]
     time = np.array([i for j in time for i in j])
     flux = np.array([i for j in flux for i in j])
 
-    sector_times = pd.read_csv("sector_times.csv")
-    sectors, star = get_sectors(ticid, 1,
-                                lower_sector_limit=lower_sector_limit,
-                                upper_sector_limit=upper_sector_limit)
-    gap_times = []
-    for sector in sectors:
-        st = sector_times.event.values == "start"
-        m = sector == sector_times.sector.values[st]
-        gap_times.append(float(sector_times.TJD.values[st][m]))
+    # sector_times = pd.read_csv(st_file)
+
+    # gap_times = []
+    # for sector in sectors:
+    #     st = sector_times.event.values == "start"
+    #     m = sector == sector_times.sector.values[st]
+    #     gap_times.append(float(sector_times.TJD.values[st][m]))
+
     gap_times.pop(0)
 
     # Estimate flux uncertainties
