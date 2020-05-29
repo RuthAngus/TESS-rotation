@@ -6,6 +6,7 @@ import eleanor
 from tqdm import tnrange
 
 from scipy.interpolate import RectBivariateSpline
+from .cpm_tools import get_sectors, get_fits_filenames
 
 
 def pathLookup(ccd, camera, sector):
@@ -354,3 +355,57 @@ def move_prf(prf, xshift, yshift, npix=13.):
     Z2 = interp_spline(y2, x2)
 
     return np.sum(np.reshape(Z2, (npix,100,npix,100)), axis=(1,3))/100/100
+
+
+def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
+                  any_observed_sector=1, xpix=68, ypix=68):
+
+    sectors, star = get_sectors(ticid, any_observed_sector)
+
+    # Eleanor object
+    print("Finding Eleanor object...")
+    for sector in sectors:
+        print("sector", sector)
+
+        print(ticid, sector)
+        star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
+        sec, camera, ccd = star.sector, star.camera, star.chip
+        colrowpix = star.position_on_chip
+
+        fits_image_filename, injection_filename = get_fits_filenames(
+            tesscut_path, sec, camera, ccd, star.coords[0], star.coords[1])
+
+        inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
+                          camera, ccd, colrowpix, fits_image_filename,
+                          injection_filename)
+
+
+def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
+                      camera, ccd, colrowpix, fits_image_filename,
+                      injection_filename, offset_x=0., offset_y=0.):
+
+    # Load the TESScut FFI data
+    print("Loading TESScut FFI...")
+    hdul = fits.open(fits_image_filename)
+    postcard = hdul[1].data
+    time = postcard["TIME"]*1.
+    flux = postcard["FLUX"]*1.
+
+    # Get the PRF
+    print("Fetching PRF...")
+    path = "https://archive.stsci.edu/missions/tess/models/prf_fitsfiles/"
+    prf = getPrfAtColRowFits(colrowpix[0], colrowpix[1], ccd, camera, sec,
+                             path)  # col, row, ccd, camera, sector
+
+    # Simulate the signal
+    signal = baseline + amplitude*np.sin(time*2*np.pi/period)
+
+    # Inject the signal and save the new file.
+    print("Injecting signal and saving...")
+    injected_flux = flux + signal[:, None, None] * move_prf(
+        prf, offset_x, offset_y, npix=68)[None, :, :]
+    hdul[1].data["FLUX"] = injected_flux
+    if os.path.exists(injection_filename):
+        os.remove(injection_filename)
+    hdul.writeto(injection_filename)
+    hdul.close()
