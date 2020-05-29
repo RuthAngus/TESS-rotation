@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -6,6 +7,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 import astropy.stats as aps
 
+from astroquery.mast import Tesscut
 import lightkurve as lk
 import eleanor
 import tess_cpm
@@ -52,13 +54,12 @@ def make_lc_single_sector(sector, collims, rowlims, fits_files,
 
 
 def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
-                       tesscut_path="/Users/rangus/projects/TESS-rotation/data/TESScut",
-                       ):
+                       tesscut_path="/Users/rangus/projects/TESS-rotation/data/TESScut"):
 
     # Download light curves
-    sectors, star = tr.get_sectors(ticid, 14,
-                                   lower_sector_limit=lower_sector_limit,
-                                   upper_sector_limit=upper_sector_limit)
+    sectors, star = get_sectors(ticid, 14,
+                                lower_sector_limit=lower_sector_limit,
+                                upper_sector_limit=upper_sector_limit)
     path_to_tesscut = "{0}/astrocut_{1:12}_{2:13}_{3}x{4}px".format(
         tesscut_path, star.coords[0], star.coords[1], 68, 68)
 
@@ -76,9 +77,9 @@ def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
                 os.mkdir(path_to_tesscut)
 
             print("Downloading sector", sector, "for TIC", ticid)
-            hdulist = Tesscut.download_cutouts(objectname="TIC 164668179",
-                                            sector=sector, size=68,
-                                            path=path_to_tesscut)
+            hdulist = Tesscut.download_cutouts(
+                objectname="TIC {}".format(ticid), sector=sector, size=68,
+                path=path_to_tesscut)
         else:
             print("Found cached file ", full_path)
 
