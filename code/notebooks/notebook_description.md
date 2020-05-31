@@ -1,3 +1,8 @@
+CPM_demo.ipynb
+---------------------
+Running CPM code on CVZ M dwarf.
+
+
 Kepler_periods.ipynb
 ---------------------
 Measuring the rotation periods of Kepler stars using TESS data.
@@ -15,7 +20,9 @@ Using the Eleanor and light kurve aperture selection tools.
 
 CPM_one_star.ipynb
 ------------------
-Running CPM on a southern bright M dwarf target. Also, sigma clipping and stitching it together.
+Running CPM on many southern bright M dwarf targets to get a series of light curves.
+Also, sigma clipping and stitching light curves together.
+Has a number of downloaded light curve paths.
 
 injection_tests.ipynb
 -------------------------
