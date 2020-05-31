@@ -20,17 +20,24 @@ from tess_stars2px import tess_stars2px_function_entry
 
 def select_aperture(sector, collims, rowlims, fits_files, plot=True):
     dw = tess_cpm.Source(fits_files, remove_bad=True)
+    print(np.shape(dw.cutout_data.normalized_fluxes), "shape")
+    print(collims, rowlims)
     dw.set_aperture(rowlims=rowlims, collims=collims)
+    fig = None
     if plot:
-        dw.plot_cutout(rowlims=[0, 64], collims=[0, 64], show_aperture=True);
-    return collims, rowlims
+        fig = dw.plot_cutout(rowlims=[0, 64], collims=[0, 64],
+                                show_aperture=True);
+    return collims, rowlims, fig
 
 
 def make_lc_single_sector(sector, collims, rowlims, fits_files,
                           save_to_file=True, plot=True):
 
     dw = tess_cpm.Source(fits_files, remove_bad=True)
-    dw.set_aperture(rowlims=rowlims, collims=collims)
+    try:
+        dw.set_aperture(rowlims=rowlims, collims=collims)
+    except IndexError:
+        return [], []
     dw.add_cpm_model(predictor_method='similar_brightness')
 
     dw.add_poly_model()
@@ -60,8 +67,7 @@ def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
                        tesscut_path="/Users/rangus/projects/TESS-rotation/data/TESScut"):
 
     # Download light curves
-    sectors, star = get_sectors(ticid, 14,
-                                lower_sector_limit=lower_sector_limit,
+    sectors, star = get_sectors(ticid, lower_sector_limit=lower_sector_limit,
                                 upper_sector_limit=upper_sector_limit)
     path_to_tesscut = "{0}/astrocut_{1:12}_{2:13}_{3}x{4}px".format(
         tesscut_path, star.coords[0], star.coords[1], 68, 68)
@@ -87,10 +93,10 @@ def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
             print("Found cached file ", full_path)
 
 
-def get_sectors(ticid, any_observed_sector, lower_sector_limit=0,
-                upper_sector_limit=50):
-    star = eleanor.Source(tic=ticid, sector=int(any_observed_sector),
-                          tc=True)
+def get_sectors(ticid, lower_sector_limit=0, upper_sector_limit=1000):
+    star = eleanor.Source(tic=ticid)
+    # , sector=int(any_observed_sector),
+    #                       tc=True)
     outID, outEclipLong, outEclipLat, outSec, outCam, outCcd, outColPix, \
         outRowPix, scinfo = tess_stars2px_function_entry(
             int(ticid), star.coords[0], star.coords[1])
@@ -112,15 +118,24 @@ def get_fits_filenames(tesscut_path, sector, camera, ccd, ra, dec, xpix=68,
     return fits_image_filename
 
 
-def get_CPM_aperture(aperture, npix=13, xstart=27, ystart=28):
+def get_CPM_aperture(aperture, xstart=27, ystart=28):
+    npix = np.shape(aperture)[0]
     x = np.arange(npix)
     row_index, column_index = np.meshgrid(x, x, indexing="ij")
     aperture_mask = aperture == 1
     column_inds = column_index[aperture_mask]
     row_inds = row_index[aperture_mask]
+
+    # Catch instances where the aperture is only 1x1 pixels
+    if len(column_inds) == 1 and len(row_inds) == 1:
+        column_inds = np.array([column_inds[0], column_inds[0]])
+        row_inds = np.array([row_inds[0], row_inds[0]])
+
+    # Turn pixel indices into a tuple of start and stop pixel inds.
     xpixels = tuple(xstart + row_inds)
     ypixels = tuple(ystart + column_inds)
-    return xpixels, ypixels
+    return (33, 35), (33, 35)
+    # return xpixels, ypixels
 
 
 def CPM_one_sector(ticid, tesscut_path, sector, camera, ccd, ra, dec):
@@ -133,17 +148,18 @@ def CPM_one_sector(ticid, tesscut_path, sector, camera, ccd, ra, dec):
     xpixels, ypixels = get_CPM_aperture(data.aperture)
 
     # Create CPM light curve
-    select_aperture(sector, ypixels, xpixels, fits_file, plot=False)
+    _, _, fig = select_aperture(sector, ypixels, xpixels, fits_file, plot=True)
+    fig.savefig("{}_cpm_aperture".format(ticid))
     x, y = make_lc_single_sector(sector, ypixels, xpixels, fits_file,
                                     plot=False, save_to_file=False)
     return x, y
 
 
-def CPM_recover(ticid, tesscut_path, any_observed_sector=1,
-                lower_sector_limit=0, upper_sector_limit=1000):
+def CPM_recover(ticid, tesscut_path, lower_sector_limit=0,
+                upper_sector_limit=1000):
 
     print("Searching for observed sectors...")
-    sectors, star = get_sectors(ticid, any_observed_sector,
+    sectors, star = get_sectors(ticid,
                                 lower_sector_limit=lower_sector_limit,
                                 upper_sector_limit=upper_sector_limit)
     print("sectors found: ", sectors)
@@ -153,7 +169,7 @@ def CPM_recover(ticid, tesscut_path, any_observed_sector=1,
     for sector in sectors:
         print("sector", sector)
         star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
-        x, y = CPM_one_sector(ticid, tesscut_path, star.sector, star.camera,
+        x, y = CPM_one_sector(ticid, tesscut_path, sector, star.camera,
                               star.chip, star.coords[0], star.coords[1])
         xs.append(x)
         ys.append(y)
