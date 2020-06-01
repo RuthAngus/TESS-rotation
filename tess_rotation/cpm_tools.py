@@ -34,10 +34,7 @@ def make_lc_single_sector(sector, collims, rowlims, fits_files,
                           save_to_file=True, plot=True):
 
     dw = tess_cpm.Source(fits_files, remove_bad=True)
-    try:
-        dw.set_aperture(rowlims=rowlims, collims=collims)
-    except IndexError:
-        return [], []
+    dw.set_aperture(rowlims=rowlims, collims=collims)
     dw.add_cpm_model(predictor_method='similar_brightness')
 
     dw.add_poly_model()
@@ -119,22 +116,22 @@ def get_fits_filenames(tesscut_path, sector, camera, ccd, ra, dec, xpix=68,
 
 
 def get_CPM_aperture(aperture, xstart=27, ystart=28):
-    npix = np.shape(aperture)[0]
-    x = np.arange(npix)
-    row_index, column_index = np.meshgrid(x, x, indexing="ij")
-    aperture_mask = aperture == 1
-    column_inds = column_index[aperture_mask]
-    row_inds = row_index[aperture_mask]
-
-    # Catch instances where the aperture is only 1x1 pixels
-    if len(column_inds) == 1 and len(row_inds) == 1:
-        column_inds = np.array([column_inds[0], column_inds[0]])
-        row_inds = np.array([row_inds[0], row_inds[0]])
-
-    # Turn pixel indices into a tuple of start and stop pixel inds.
-    xpixels = tuple(xstart + row_inds)
-    ypixels = tuple(ystart + column_inds)
     return (33, 35), (33, 35)
+    # npix = np.shape(aperture)[0]
+    # x = np.arange(npix)
+    # row_index, column_index = np.meshgrid(x, x, indexing="ij")
+    # aperture_mask = aperture == 1
+    # column_inds = column_index[aperture_mask]
+    # row_inds = row_index[aperture_mask]
+
+    # # Catch instances where the aperture is only 1x1 pixels
+    # if len(column_inds) == 1 and len(row_inds) == 1:
+    #     column_inds = np.array([column_inds[0], column_inds[0]])
+    #     row_inds = np.array([row_inds[0], row_inds[0]])
+
+    # # Turn pixel indices into a tuple of start and stop pixel inds.
+    # xpixels = tuple(xstart + row_inds)
+    # ypixels = tuple(ystart + column_inds)
     # return xpixels, ypixels
 
 
@@ -148,8 +145,7 @@ def CPM_one_sector(ticid, tesscut_path, sector, camera, ccd, ra, dec):
     xpixels, ypixels = get_CPM_aperture(data.aperture)
 
     # Create CPM light curve
-    _, _, fig = select_aperture(sector, ypixels, xpixels, fits_file, plot=True)
-    fig.savefig("{}_cpm_aperture".format(ticid))
+    # _, _, fig = select_aperture(sector, ypixels, xpixels, fits_file, plot=False)
     x, y = make_lc_single_sector(sector, ypixels, xpixels, fits_file,
                                     plot=False, save_to_file=False)
     return x, y
