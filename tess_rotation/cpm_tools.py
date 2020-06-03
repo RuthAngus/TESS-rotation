@@ -173,7 +173,7 @@ def CPM_recover(ticid, tesscut_path, lower_sector_limit=0,
     return xs, ys, sectors
 
 
-def stitch_light_curve(ticid, sectors, time, flux):
+def stitch_light_curve(ticid, time, flux):
 
     gap_times = [time[i][0] for i in range(len(time))]
     time = np.array([i for j in time for i in j])
