@@ -1,3 +1,8 @@
+Kepler_one_by_one.ipynb
+-----------------------
+Running CPM on some key Kepler targets, one by one.
+
+
 CPM_demo.ipynb
 ---------------------
 Running CPM code on CVZ M dwarf.
