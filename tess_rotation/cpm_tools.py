@@ -70,6 +70,7 @@ def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
         tesscut_path, star.coords[0], star.coords[1], 68, 68)
 
     for sector in sectors:
+        print("sector = ", int(sector))
         star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
         fits_only = "tess-s{0}-{1}-{2}_{3:.6f}_{4:.6f}_{5}x{6}_astrocut.fits" \
             .format(str(int(sector)).zfill(4), star.camera, star.chip,

@@ -1,3 +1,8 @@
+Injections.ipynb
+----------------
+Actually doing injection and recovery tests.
+Includes function to convert magnitude to electron count.
+
 Kepler_one_by_one.ipynb
 -----------------------
 Running CPM on some key Kepler targets, one by one.
@@ -31,7 +36,7 @@ Has a number of downloaded light curve paths.
 
 injection_tests.ipynb
 -------------------------
-Injecting sinusoidal signals into data to try to recover with CPM.
+Developing code needed for injecting sinusoidal signals into data to try to recover with CPM.
 
 inject_signals.ipynb
 -------------------------
