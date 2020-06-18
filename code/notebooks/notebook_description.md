@@ -1,3 +1,15 @@
+RandomLightCurves.ipynb
+-----------------------
+Rodrigo's notebook for generating light curves.
+
+Injection_grid.ipynb
+--------------------
+Trying to establish CPM limits.
+
+Mearth_kepler_TESS.ipynb
+------------------------
+Plotting Mearth, Kepler and TESS stars side-by-side.
+
 Injections.ipynb
 ----------------
 Actually doing injection and recovery tests.
