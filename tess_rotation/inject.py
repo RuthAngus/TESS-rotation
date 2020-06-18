@@ -392,7 +392,7 @@ def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
 
     for i, sector in enumerate(sectors):
 
-        print("sector = ", sector)
+        print("sector", sector)
         star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
         sec, camera, ccd = star.sector, star.camera, star.chip
         colrowpix = star.position_on_chip
@@ -401,10 +401,11 @@ def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
                                                  ccd, star.coords[0],
                                                  star.coords[1])
         path_to_tesscut = "{0}/astrocut_{1:12}_{2:13}_{3}x{4}px".format(
-            tesscut_path, ra, dec, xpix, ypix)
+            tesscut_path, star.coords[0], star.coords[1], xpix, ypix)
         inj_dir = "{0}/injected".format(path_to_tesscut)
         injection_filename = "{0}/tess-s{1}-{2}-{3}_{4:.6f}_{5:.6f}_{6}x{7}_astrocut.fits".format(
-            inj_dir, str(int(sector)).zfill(4), camera, ccd, ra, dec, xpix, ypix)
+            inj_dir, str(int(sector)).zfill(4), camera, ccd, star.coords[0],
+            star.coords[1], xpix, ypix)
 
         mask = (time[i][0] <= time_array) & (time_array <= time[i][-1])
         assert len(signal[mask]) == len(time[i])
