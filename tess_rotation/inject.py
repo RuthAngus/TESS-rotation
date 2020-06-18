@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import eleanor
 from tqdm import tnrange
+import starry
 
 from scipy.interpolate import RectBivariateSpline
 from .cpm_tools import get_sectors, get_fits_filenames
@@ -382,7 +383,8 @@ def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
 
 def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
                       camera, ccd, colrowpix, fits_image_filename,
-                      injection_filename, offset_x=0., offset_y=0.):
+                      injection_filename, offset_x=0., offset_y=0.,
+                      signal="starry"):
 
     # Load the TESScut FFI data
     print("Loading TESScut FFI...")
@@ -398,7 +400,10 @@ def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
                              path)  # col, row, ccd, camera, sector
 
     # Simulate the signal
-    signal = baseline + amplitude*np.sin(time*2*np.pi/period)
+    if signal == "sinusoid":
+        signal = baseline + amplitude*np.sin(time*2*np.pi/period)
+    elif signal == "starry":
+        signal = baseline + starry_simulation(time, period, amplitude)
 
     # Inject the signal and save the new file.
     print("Injecting signal and saving...")
@@ -409,3 +414,39 @@ def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
         os.remove(injection_filename)
     hdul.writeto(injection_filename)
     hdul.close()
+
+
+# Define our spatial power spectrum
+def power(l, amp=1e-1):
+    return amp * np.exp(-((l / 10) ** 2))
+
+
+def get_random_light_curve(t, p, a):
+    # Random inclination (isotropically distributed ang. mom. vector)
+    map.inc = np.arccos(np.random.random()) * 180 / np.pi
+
+    # Random period, U[1, 30]
+    # p = 1 + 29 * np.random.random()
+
+    # Random surface map
+    for l in range(1, map.ydeg + 1):
+        map[l, :] = np.random.randn(2 * l + 1) * power(l, amp=a) / (2 * l + 1)
+
+    # Compute the flux
+    flux = map.flux(theta=360.0 * t / p)
+
+    # Median-correct it
+    flux -= np.median(flux)
+    flux += 1
+
+    return flux
+
+
+def starry_simulation(time, period, amplitude):
+    np.random.seed(0)
+    starry.config.lazy = False
+
+    # Instantiate a 10th degree starry map
+    map = starry.Map(10)
+    flux = get_random_light_curve(time, period, amplitude)
+    return flux
