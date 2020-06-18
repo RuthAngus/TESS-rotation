@@ -359,26 +359,89 @@ def move_prf(prf, xshift, yshift, npix=13.):
 
 
 def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
-                  any_observed_sector=1, xpix=68, ypix=68):
+                  upper_sector_limit, xpix=68, ypix=68):
 
-    sectors, star = get_sectors(ticid, any_observed_sector)
+    sectors, star = get_sectors(ticid, upper_sector_limit=upper_sector_limit)
 
     # Eleanor object
     print("Finding Eleanor object...")
+    time, inds, max_inds = [], [], 0
     for sector in sectors:
         print("sector", sector)
 
-        print(ticid, sector)
         star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
         sec, camera, ccd = star.sector, star.camera, star.chip
         colrowpix = star.position_on_chip
 
-        fits_image_filename, injection_filename = get_fits_filenames(
-            tesscut_path, sec, camera, ccd, star.coords[0], star.coords[1])
+        fits_image_filename = get_fits_filenames(tesscut_path, sec, camera,
+                                                 ccd, star.coords[0],
+                                                 star.coords[1])
 
-        inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
-                          camera, ccd, colrowpix, fits_image_filename,
-                          injection_filename)
+
+        # Load the TESScut FFI data (get time array)
+        hdul = fits.open(fits_image_filename)
+        postcard = hdul[1].data
+        t = postcard["TIME"]*1.
+        flux = postcard["FLUX"]*1.
+
+        time.append(t)
+
+    # Create the multi-sector signal
+    time_array = np.array([i for j in time for i in j])
+    signal = baseline + get_random_light_curve(time_array, period, amplitude)
+
+    for i, sector in enumerate(sectors):
+
+        print("sector = ", sector)
+        star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
+        sec, camera, ccd = star.sector, star.camera, star.chip
+        colrowpix = star.position_on_chip
+
+        fits_image_filename = get_fits_filenames(tesscut_path, sec, camera,
+                                                 ccd, star.coords[0],
+                                                 star.coords[1])
+        path_to_tesscut = "{0}/astrocut_{1:12}_{2:13}_{3}x{4}px".format(
+            tesscut_path, ra, dec, xpix, ypix)
+        inj_dir = "{0}/injected".format(path_to_tesscut)
+        injection_filename = "{0}/tess-s{1}-{2}-{3}_{4:.6f}_{5:.6f}_{6}x{7}_astrocut.fits".format(
+            inj_dir, str(int(sector)).zfill(4), camera, ccd, ra, dec, xpix, ypix)
+
+        mask = (time[i][0] <= time_array) & (time_array <= time[i][-1])
+        assert len(signal[mask]) == len(time[i])
+        inject_one_sector_starry(ticid, sector, signal[mask], camera, ccd,
+                                 colrowpix, fits_image_filename,
+                                 injection_filename)
+
+    return time_array, signal
+
+
+def inject_one_sector_starry(ticid, sector, signal, camera, ccd,
+                             colrowpix, fits_image_filename,
+                             injection_filename, offset_x=0., offset_y=0.):
+
+    # Load the TESScut FFI data
+    print("Loading TESScut FFI...")
+    hdul = fits.open(fits_image_filename)
+    postcard = hdul[1].data
+    time = postcard["TIME"]*1.
+    flux = postcard["FLUX"]*1.
+
+    # Get the PRF
+    print("Fetching PRF...")
+    path = "https://archive.stsci.edu/missions/tess/models/prf_fitsfiles/"
+    prf = getPrfAtColRowFits(colrowpix[0], colrowpix[1], ccd, camera, sector,
+                             path)  # col, row, ccd, camera, sector
+
+    # Inject the signal and save the new file.
+    print("Injecting signal and saving...")
+    injected_flux = flux + signal[:, None, None] * move_prf(
+        prf, offset_x, offset_y, npix=68)[None, :, :]
+    hdul[1].data["FLUX"] = injected_flux
+    if os.path.exists(injection_filename):
+        os.remove(injection_filename)
+    hdul.writeto(injection_filename)
+    hdul.close()
+    return time, signal
 
 
 def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
@@ -403,7 +466,7 @@ def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
     if signal == "sinusoid":
         signal = baseline + amplitude*np.sin(time*2*np.pi/period)
     elif signal == "starry":
-        signal = baseline + starry_simulation(time, period, amplitude)
+        signal = baseline + get_random_light_curve(time, period, amplitude)
 
     # Inject the signal and save the new file.
     print("Injecting signal and saving...")
@@ -414,6 +477,7 @@ def inject_one_sector(ticid, sector, period, amplitude, baseline, sec,
         os.remove(injection_filename)
     hdul.writeto(injection_filename)
     hdul.close()
+    return time, signal
 
 
 # Define our spatial power spectrum
@@ -422,6 +486,12 @@ def power(l, amp=1e-1):
 
 
 def get_random_light_curve(t, p, a):
+    np.random.seed(0)
+    starry.config.lazy = False
+
+    # Instantiate a 10th degree starry map
+    map = starry.Map(10)
+
     # Random inclination (isotropically distributed ang. mom. vector)
     map.inc = np.arccos(np.random.random()) * 180 / np.pi
 
@@ -439,14 +509,4 @@ def get_random_light_curve(t, p, a):
     flux -= np.median(flux)
     flux += 1
 
-    return flux
-
-
-def starry_simulation(time, period, amplitude):
-    np.random.seed(0)
-    starry.config.lazy = False
-
-    # Instantiate a 10th degree starry map
-    map = starry.Map(10)
-    flux = get_random_light_curve(time, period, amplitude)
     return flux
