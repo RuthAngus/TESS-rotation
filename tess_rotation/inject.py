@@ -496,7 +496,8 @@ def get_random_light_curve(t, p, a):
     map = starry.Map(10)
 
     # Random inclination (isotropically distributed ang. mom. vector)
-    map.inc = np.arccos(np.random.random()) * 180 / np.pi
+    # map.inc = np.arccos(np.random.random()) * 180 / np.pi
+    map.inc = 90.
 
     # Random period, U[1, 30]
     # p = 1 + 29 * np.random.random()

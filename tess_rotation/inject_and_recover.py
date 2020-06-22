@@ -99,7 +99,7 @@ class InjectStar(object):
         injected_filename = self.inj_file_names[i]
 
         # Create CPM light curve
-        x, y = tr.make_lc_single_sector(sector, [33, 35], [33, 35],
+        x, y = make_lc_single_sector(sector, [33, 35], [33, 35],
                                         injected_filename, plot=False,
                                         save_to_file=False)
         return x, y
