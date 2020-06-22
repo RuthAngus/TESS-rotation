@@ -93,8 +93,6 @@ def download_tess_cuts(ticid, lower_sector_limit=0, upper_sector_limit=1000,
 
 def get_sectors(ticid, lower_sector_limit=0, upper_sector_limit=1000):
     star = eleanor.Source(tic=ticid)
-    # , sector=int(any_observed_sector),
-    #                       tc=True)
     outID, outEclipLong, outEclipLat, outSec, outCam, outCcd, outColPix, \
         outRowPix, scinfo = tess_stars2px_function_entry(
             int(ticid), star.coords[0], star.coords[1])
