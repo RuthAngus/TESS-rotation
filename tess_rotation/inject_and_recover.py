@@ -7,7 +7,7 @@ from tqdm import tnrange
 import starry
 
 from scipy.interpolate import RectBivariateSpline
-from .cpm_tools import get_sectors, get_fits_filenames
+from .cpm_tools import get_sectors, get_fits_filenames, make_lc_single_sector
 from .inject import get_random_light_curve, inject_one_sector_starry
 
 
@@ -114,7 +114,7 @@ class InjectStar(object):
 
         for i, sector in enumerate(self.sectors):
             print("sector", sector)
-            x, y = CPM_one_sector(i, sector)
+            x, y = self.CPM_one_sector(i, sector)
             xs.append(x)
             ys.append(y)
 
