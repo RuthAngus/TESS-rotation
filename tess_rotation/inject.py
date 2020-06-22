@@ -366,12 +366,14 @@ def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
     # Eleanor object
     print("Finding Eleanor object...")
     time, inds, max_inds = [], [], 0
+    elstar = []
     for sector in sectors:
         print("sector", sector)
 
         star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
         sec, camera, ccd = star.sector, star.camera, star.chip
         colrowpix = star.position_on_chip
+        elstar.append(star)
 
         fits_image_filename = get_fits_filenames(tesscut_path, sec, camera,
                                                  ccd, star.coords[0],
@@ -393,7 +395,7 @@ def inject_signal(ticid, period, amplitude, baseline, tesscut_path,
     for i, sector in enumerate(sectors):
 
         print("sector", sector)
-        star = eleanor.Source(tic=ticid, sector=int(sector), tc=True)
+        star = elstar[i]
         sec, camera, ccd = star.sector, star.camera, star.chip
         colrowpix = star.position_on_chip
 
@@ -487,7 +489,7 @@ def power(l, amp=1e-1):
 
 
 def get_random_light_curve(t, p, a):
-    np.random.seed(0)
+    # np.random.seed(0)
     starry.config.lazy = False
 
     # Instantiate a 10th degree starry map
