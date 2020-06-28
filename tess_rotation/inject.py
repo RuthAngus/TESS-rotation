@@ -488,8 +488,11 @@ def power(l, amp=1e-1):
     return amp * np.exp(-((l / 10) ** 2))
 
 
-def get_random_light_curve(t, p, a, inclination=90.):
-    # np.random.seed(0)
+def get_random_light_curve(t, p, a, inclination=90., seed=None):
+
+    if seed is not None:
+        np.random.seed(seed)
+
     starry.config.lazy = False
 
     # Instantiate a 10th degree starry map
