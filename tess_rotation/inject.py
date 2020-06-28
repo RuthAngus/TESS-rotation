@@ -488,7 +488,7 @@ def power(l, amp=1e-1):
     return amp * np.exp(-((l / 10) ** 2))
 
 
-def get_random_light_curve(t, p, a):
+def get_random_light_curve(t, p, a, inclination=90.):
     # np.random.seed(0)
     starry.config.lazy = False
 
@@ -496,8 +496,10 @@ def get_random_light_curve(t, p, a):
     map = starry.Map(10)
 
     # Random inclination (isotropically distributed ang. mom. vector)
-    # map.inc = np.arccos(np.random.random()) * 180 / np.pi
-    map.inc = 90.
+    if inclination == "random":
+        map.inc = np.arccos(np.random.random()) * 180 / np.pi
+    else:
+        map.inc = inclination
 
     # Random period, U[1, 30]
     # p = 1 + 29 * np.random.random()
